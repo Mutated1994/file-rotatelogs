@@ -135,7 +135,9 @@ func (rl *RotateLogs) getWriter_nolock(bailOnRotateFail, useGenerationalNames bo
 	} else {
 		if !useGenerationalNames {
 			// nothing to do
-			return rl.outFh, nil
+			//return rl.outFh, nil
+			// TODO wpt
+			return rl.outWriter, nil
 		}
 		// This is used when we *REALLY* want to rotate a log.
 		// instead of just using the regular strftime pattern, we
@@ -157,6 +159,9 @@ func (rl *RotateLogs) getWriter_nolock(bailOnRotateFail, useGenerationalNames bo
 		return nil, errors.Errorf("failed to open file %s: %s", rl.pattern, err)
 	}
 
+	// TODO wpt
+	w := NewWriter(fh)
+
 	if err := rl.rotate_nolock(filename); err != nil {
 		err = errors.Wrap(err, "failed to rotate")
 		if bailOnRotateFail {
@@ -169,12 +174,34 @@ func (rl *RotateLogs) getWriter_nolock(bailOnRotateFail, useGenerationalNames bo
 		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
 	}
 
+	// TODO wpt
+	if rl.outWriter != nil {
+		rl.outWriter.close()
+	}
+
 	rl.outFh.Close()
 	rl.outFh = fh
+
+	// TODO wpt
+	rl.outWriter = w
+
 	rl.curFn = filename
 	rl.generation = generation
 
-	return fh, nil
+	go func() {
+		for {
+			<-w.ticker.C
+			rl.mutex.Lock()
+			if err := w.sync(); err != nil {
+				return
+			}
+			rl.mutex.Unlock()
+		}
+	}()
+
+	// TODO wpt
+	//return fh, nil
+	return w, nil
 }
 
 // CurrentFileName returns the current file name that

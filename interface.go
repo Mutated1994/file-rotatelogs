@@ -19,6 +19,7 @@ type RotateLogs struct {
 	maxAge        time.Duration
 	mutex         sync.RWMutex
 	outFh         *os.File
+	outWriter     *Writer
 	pattern       *strftime.Strftime
 	rotationTime  time.Duration
 	rotationCount uint
@@ -43,5 +44,5 @@ var Local = clockFn(time.Now)
 // the RotateLogs constructor
 type Option interface {
 	Name() string
-	Value() interface {}
+	Value() interface{}
 }
